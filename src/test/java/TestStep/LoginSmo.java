@@ -13,7 +13,6 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
 import java.time.Duration;
 
 public class LoginSmo {
@@ -75,7 +74,7 @@ public class LoginSmo {
     public void afterTest (Scenario scenario){
         try {
             base.tearDown(scenario);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
