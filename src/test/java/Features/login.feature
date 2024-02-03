@@ -12,3 +12,9 @@ Feature: Test Login
     When I fill password of smartid
     When I click on button Login by smartid
     Then I login success by smartid
+
+  Scenario: Login fail
+    When I fill username invalid
+    When I fill password
+    When I click on button Login
+    Then I login fail

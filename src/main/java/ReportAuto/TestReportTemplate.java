@@ -1,23 +1,20 @@
 package ReportAuto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import org.apache.poi.common.usermodel.HyperlinkType;
+import io.cucumber.gherkin.GherkinParser;
+import io.cucumber.java.Scenario;
+import io.cucumber.messages.types.Envelope;
+import io.cucumber.messages.types.PickleStep;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.xssf.usermodel.XSSFHyperlink;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.openqa.selenium.WebDriver;
 
 import java.io.IOException;
-
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TestReportTemplate {
     private String stt;
@@ -29,6 +26,8 @@ public class TestReportTemplate {
     private String actual;
     private String image = null;
     private String linkimage = null;
+
+    CaptureHelpers help = new CaptureHelpers();
 
     public String getActual() {
         return actual;
@@ -94,49 +93,91 @@ public class TestReportTemplate {
         this.linkimage = linkimage;
     }
 
-    public void writeTestData (int startIndex, Row row, XSSFSheet sheet) throws IOException{
-        CreationHelper creationHelper = sheet.getWorkbook().getCreationHelper();
-        CellStyle globalStyle = row.getRowStyle();
-        Cell cell;
+    public void writeTestData (Scenario scenario, WebDriver driver, String featurename) throws IOException {
+        String fileName = "ReportExcel.xlsx";
+        String fileTemplate = "TestcaseTemplate.xlsx";
 
-        cell = row.createCell(startIndex);
-        cell.setCellValue(getStt());
-        cell.setCellStyle(globalStyle);
+        String packagePath = "src/test/java/Features/";
+        String featureFileName = featurename;
+        String featureFilePath = packagePath + featureFileName;
+        Path path = Paths.get(featureFilePath);
 
-        cell = row.createCell(startIndex+1);
-        cell.setCellValue(getTitle());
-        cell.setCellStyle(globalStyle);
+        GherkinParser gherkinParser = GherkinParser.builder().build();
+        Stream<Envelope> pickles = gherkinParser.parse(path).filter(envelope -> envelope.getPickle().isPresent());
+        List<Envelope> envelopeList = pickles.collect(Collectors.toList());
+        List<PickleStep> lstStep = envelopeList.get(ExcelUtils.i-1).getPickle().get().getSteps();
+        String step = "";
+        String then = "";
+        for (int i = 0; i < lstStep.size(); i++) {
+            PickleStep p = lstStep.get(i);
+            if (i + 1 < lstStep.size()) {
+                step += p.getText() + "\n";
+            } else {
+                then += p.getText() + "\n";
+            }
+        }
 
-        cell = row.createCell(startIndex+2);
-        cell.setCellValue(getSteptest());
-        cell.setCellStyle(globalStyle);
 
-        cell = row.createCell(startIndex+3);
-        cell.setCellValue(getExpected());
-        cell.setCellStyle(globalStyle);
+        ExcelUtils.workbook = ExcelUtils.getWorkbook();
+        if (ExcelUtils.workbook == null) {
+            ExcelUtils.workbook = ExcelUtils.readXLSXFile(fileTemplate);
+        }
+        if (scenario.isFailed()) {
+            System.out.println("Result: False");
+            // Take a screenshot
+            String url = help.captureScreenshot(driver, scenario.getName());
 
-        cell = row.createCell(startIndex+4);
-        cell.setCellValue(getActual());
-        cell.setCellStyle(globalStyle);
+            Sheet sheet = ExcelUtils.workbook.getSheetAt(0);
+
+            Row row = sheet.getRow(ExcelUtils.i);
+
+            if (row != null) {
+                Cell cell0 = row.getCell(0);
+                cell0.setCellValue(ExcelUtils.i);
+
+                Cell cell1 = row.getCell(1);
+                cell1.setCellValue(scenario.getName());
+
+                Cell cell2 = row.getCell(2);
+                cell2.setCellValue(step);
+
+                Cell cell3 = row.getCell(3);
+                cell3.setCellValue(then);
+
+                Cell cell5 = row.getCell(5);
+                cell5.setCellValue(String.valueOf(scenario.getStatus()));
+                ExcelUtils.addImageToCell(ExcelUtils.workbook, row, 6, url);
+
+            }
+
+            ExcelUtils.writeXLSXFile(ExcelUtils.workbook, fileName);
+        } else {
+            System.out.println("Thanh Cong " + ExcelUtils.i);
+
+            Sheet sheet = ExcelUtils.workbook.getSheetAt(0);
+
+            Row row = sheet.getRow(ExcelUtils.i);
+            if (row != null) {
+                Cell cell0 = row.getCell(0);
+                cell0.setCellValue(ExcelUtils.i);
+
+                Cell cell1 = row.getCell(1);
+                cell1.setCellValue(scenario.getName());
+
+                Cell cell2 = row.getCell(2);
+                cell2.setCellValue(step);
+
+                Cell cell3 = row.getCell(3);
+                cell3.setCellValue(then);
 
 
-        cell = row.createCell(startIndex+5);
-        cell.setCellValue(getResult());
-        cell.setCellStyle(globalStyle);
+                Cell cell5 = row.getCell(5);
+                cell5.setCellValue(String.valueOf(scenario.getStatus()));
+            }
 
-        if (getImage() != null){
-            cell = row.createCell(startIndex+6);
-            cell.setCellStyle(globalStyle);
-            ExcelUtils.writeImage(getImage(),row,cell,sheet);
-
-            cell = row.createCell(startIndex+7);
-            cell.setCellValue("Link screenshot");
-            cell.setCellStyle(globalStyle);
-
-            //Tao hyperlink
-            XSSFHyperlink hyperlink = (XSSFHyperlink) creationHelper.createHyperlink(HyperlinkType.URL);
-            hyperlink.setAddress(getImage().replace("\\","/")); //set address vao hyperlink
-            cell.setHyperlink(hyperlink);
+            ExcelUtils.writeXLSXFile(ExcelUtils.workbook, fileName);
         }
     }
 }
+
+

@@ -11,6 +11,8 @@ import org.openqa.selenium.WebDriver;
 import java.io.*;
 
 public class ExcelUtils {
+    public static int i = 0;
+    public static Workbook workbook = null;
     public static final String CHROME_DRIVER_SRC = System.getProperty("chromeDriverPath");
     public static final String DATA_SRC = System.getProperty("dataPath");
     public static final String IMAGES_SRC = System.getProperty("exportCapturePath");
@@ -96,6 +98,65 @@ public static void export (String outputSrc, XSSFWorkbook workbook) throws IOExc
     workbook.write(out);
     out.close();
 }
+
+    public static Workbook readXLSXFile(String fileName) throws IOException {
+        ClassLoader classLoader = ExcelUtils.class.getClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream(fileName);
+        return new XSSFWorkbook(inputStream);
+    }
+
+    public static void writeXLSXFile(Workbook workbook, String fileName) throws IOException {
+        File tempFile = File.createTempFile(fileName, ".xlsx");
+        try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+            workbook.write(outputStream);
+        }
+// Đường dẫn của tệp tạm thời
+        String tempFilePath = tempFile.getAbsolutePath();
+
+// Thư mục resources (để tệp sẽ được đóng gói)
+        String resourcesDirectory = "src/test/resources/";
+
+// Thư mục đích (trong thư mục resources)
+        String destinationDirectory = resourcesDirectory + fileName;
+
+// Sao chép tệp tạm thời vào thư mục resources
+        try (InputStream inputStream = new FileInputStream(tempFilePath);
+             OutputStream outputStream = new FileOutputStream(destinationDirectory)) {
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = inputStream.read(buffer)) > 0) {
+                outputStream.write(buffer, 0, length);
+            }
+        }
+// Xóa tệp tạm thời sau khi sao chép
+        tempFile.delete();
+    }
+
+    public static void addImageToCell(Workbook workbook, Row row, int column, String imagePath) throws IOException {
+        InputStream imageStream = new FileInputStream(imagePath);
+        byte[] bytes = IOUtils.toByteArray(imageStream);
+        int pictureIdx = workbook.addPicture(bytes, Workbook.PICTURE_TYPE_JPEG);
+
+        CreationHelper helper = workbook.getCreationHelper();
+        Drawing<?> drawing = row.getSheet().createDrawingPatriarch();
+
+        ClientAnchor anchor = helper.createClientAnchor();
+        anchor.setCol1(column);
+        anchor.setRow1(row.getRowNum());
+        anchor.setCol2(column+1);
+        anchor.setRow2(row.getRowNum()+1);
+
+
+        Picture pict = drawing.createPicture(anchor, pictureIdx);
+        pict.resize(1,1); // Thay đổi kích thước hình ảnh theo ô
+    }
+
+    public static Workbook getWorkbook() {
+        if(workbook != null) {
+            return workbook;
+        }
+        return null;
+    }
 
 }
 

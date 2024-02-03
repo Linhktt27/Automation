@@ -3,7 +3,7 @@ package RunAutoTest;
 public interface CommondVariable {
     String urlChromeDriver = "D:\\demoautotest\\Automation\\src\\test\\resources\\chromedriver.exe";
     String urlSmoWeb = "https://smartonetest.vps.com.vn/";
-    String userMain = "008809";
+    String userMain = "040580";
     String smartidMain = "26092022";
     String passMain = "Vps@12345";
 
